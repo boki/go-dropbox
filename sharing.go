@@ -2,6 +2,7 @@ package dropbox
 
 import (
 	"encoding/json"
+	"net/http"
 	"time"
 )
 
@@ -32,6 +33,7 @@ type CreateSharedLinkOutput struct {
 		Tag VisibilityType `json:".tag"`
 	} `json:"visibility"`
 	Expires time.Time `json:"expires,omitempty"`
+	Header  http.Header
 }
 
 // VisibilityType determines who can access the link.
@@ -48,13 +50,16 @@ const (
 
 // CreateSharedLink returns a shared link.
 func (c *Sharing) CreateSharedLink(in *CreateSharedLinkInput) (out *CreateSharedLinkOutput, err error) {
-	body, err := c.call("/sharing/create_shared_link_with_settings", in)
+	body, hdr, err := c.call("/sharing/create_shared_link_with_settings", in)
 	if err != nil {
 		return
 	}
 	defer body.Close()
 
 	err = json.NewDecoder(body).Decode(&out)
+	if err == nil {
+		out.Header = hdr
+	}
 	return
 }
 
@@ -81,7 +86,7 @@ type ListShareLinksOutput struct {
 // ListSharedLinks gets shared links of input.
 func (c *Sharing) ListSharedLinks(in *ListShareLinksInput) (out *ListShareLinksOutput, err error) {
 	endpoint := "/sharing/list_shared_links"
-	body, err := c.call(endpoint, in)
+	body, _, err := c.call(endpoint, in)
 	if err != nil {
 		return
 	}
@@ -110,7 +115,7 @@ type ListSharedFolderOutput struct {
 
 // ListSharedFolders returns the list of all shared folders the current user has access to.
 func (c *Sharing) ListSharedFolders(in *ListSharedFolderInput) (out *ListSharedFolderOutput, err error) {
-	body, err := c.call("/sharing/list_folders", in)
+	body, _, err := c.call("/sharing/list_folders", in)
 	if err != nil {
 		return
 	}
@@ -127,7 +132,7 @@ type ListSharedFolderContinueInput struct {
 
 // ListSharedFoldersContinue returns the list of all shared folders the current user has access to.
 func (c *Sharing) ListSharedFoldersContinue(in *ListSharedFolderContinueInput) (out *ListSharedFolderOutput, err error) {
-	body, err := c.call("/sharing/list_folders/continue", in)
+	body, _, err := c.call("/sharing/list_folders/continue", in)
 	if err != nil {
 		return
 	}
