@@ -69,7 +69,7 @@ func (c *Sharing) CreateSharedLink(in *CreateSharedLinkInput) (out *CreateShared
 type SharedLinkSettings struct {
 	RequestedVisibility VisibilityType `json:"requested_visibility,omitempty"`
 	LinkPassword        string         `json:"link_password,omitempty"`
-	Expires             time.Time      `json:"expires,omitempty"`
+	Expires             time.Time      `json:"-"`
 }
 
 // CreateSharedLinkWithSettingsInput request input.
@@ -84,7 +84,7 @@ type LinkPermissions struct {
 	VisibilityModel struct {
 		Tag VisibilityType `json:".tag"`
 	} `json:"visibility"`
-	RevokeFailureReason struct {
+	RevokeFailureReasonModel struct {
 		Tag VisibilityType `json:".tag"`
 	} `json:"revoke_failure_reason"`
 }
@@ -102,6 +102,7 @@ type TeamMemberInfo struct {
 // CreateSharedLinkWithSettingsOutput request output.
 type CreateSharedLinkWithSettingsOutput struct {
 	Metadata
+	URL             string           `json:"url"`
 	LinkPermissions *LinkPermissions `json:"link_permissions"`
 	TeamMemberInfo  *TeamMemberInfo  `json:"team_member_info"`
 	Header          http.Header
@@ -109,7 +110,29 @@ type CreateSharedLinkWithSettingsOutput struct {
 
 // CreateSharedLinkWithSettings returns a shared link.
 func (c *Sharing) CreateSharedLinkWithSettings(in *CreateSharedLinkWithSettingsInput) (out *CreateSharedLinkWithSettingsOutput, err error) {
-	body, hdr, err := c.call("/sharing/create_shared_link_with_settings", in)
+	type settings struct {
+		RequestedVisibility VisibilityType `json:"requested_visibility,omitempty"`
+		LinkPassword        string         `json:"link_password,omitempty"`
+		Expires             string         `json:"expires,omitempty"`
+	}
+	var s *settings
+	if in.Settings != nil {
+		s = &settings{
+			RequestedVisibility: in.Settings.RequestedVisibility,
+			LinkPassword:        in.Settings.LinkPassword,
+		}
+		if !in.Settings.Expires.IsZero() {
+			s.Expires = in.Settings.Expires.Format("2006-01-02T15:04:05Z")
+		}
+	}
+	in2 := &struct {
+		Path     string    `json:"path"`
+		Settings *settings `json:"settings,omitempty"`
+	}{
+		in.Path,
+		s,
+	}
+	body, hdr, err := c.call("/sharing/create_shared_link_with_settings", in2)
 	if err != nil {
 		return
 	}
@@ -120,4 +143,19 @@ func (c *Sharing) CreateSharedLinkWithSettings(in *CreateSharedLinkWithSettingsI
 		out.Header = hdr
 	}
 	return
+}
+
+// RevokeSharedLinkInput meep
+type RevokeSharedLinkInput struct {
+	URL string `json:"url"`
+}
+
+// RevokeSharedLink revokes a shared link.
+func (c *Sharing) RevokeSharedLink(in *RevokeSharedLinkInput) error {
+	body, _, err := c.call("/sharing/revoke_shared_link", in)
+	if err != nil {
+		return err
+	}
+	body.Close()
+	return nil
 }

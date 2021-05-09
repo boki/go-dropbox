@@ -9,28 +9,21 @@ import (
 func TestSharing_CreateSharedLink(t *testing.T) {
 	c := client()
 	out, err := c.Sharing.CreateSharedLink(&CreateSharedLinkInput{
-		Path: "/hello.txt",
+		Path:     "/hello.txt",
+		ShortURL: true,
 	})
 
 	assert.NoError(t, err, "error sharing file")
 	assert.Equal(t, "/hello.txt", out.Path)
 }
 
-func TestSharing_ListSharedFolder(t *testing.T) {
+func TestSharing_RevokeSharedLink(t *testing.T) {
 	c := client()
-	out, err := c.Sharing.ListSharedFolders(&ListSharedFolderInput{
-		Limit: 1,
+	out, err := c.Sharing.CreateSharedLink(&CreateSharedLinkInput{
+		Path: "/hello.txt",
 	})
+	assert.NoError(t, err, "error sharing file")
 
-	assert.NoError(t, err, "listing shared folders")
-	assert.NotEmpty(t, out.Entries, "output should be non-empty")
-
-	for out.Cursor != "" {
-		out, err = c.Sharing.ListSharedFoldersContinue(&ListSharedFolderContinueInput{
-			Cursor: out.Cursor,
-		})
-
-		assert.NoError(t, err, "listing shared folders")
-		assert.NotEmpty(t, out.Entries, "output should be non-empty")
-	}
+	err = c.Sharing.RevokeSharedLink(&RevokeSharedLinkInput{URL: out.URL})
+	assert.NoError(t, err, "error revoking shared file")
 }
