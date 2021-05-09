@@ -78,23 +78,41 @@ type CreateSharedLinkWithSettingsInput struct {
 	Settings *SharedLinkSettings `json:"settings,omitempty"`
 }
 
-// LinkPermissions define the permissions of a shared link.
+// SharedLinkAccessFailureReason determines the access failure reason.
+type SharedLinkAccessFailureReason string
+
+// SharedLinkAccessFailureReason types supported.
+const (
+	LoginRequired       SharedLinkAccessFailureReason = "login_required"
+	EmailVerifyRequired                               = "email_verify_required"
+	PasswordRequired                                  = "password_required"
+	ReasonTeamOnly                                    = "team_only"
+	ReasonOwnerOnly                                   = "owner_only"
+)
+
+// LinkPermissions defines the permissions of a shared link.
 type LinkPermissions struct {
-	CanRevoke       bool `json:"can_revoke"`
-	VisibilityModel struct {
+	CanRevoke               bool `json:"can_revoke"`
+	ResolvedVisibilityModel struct {
 		Tag VisibilityType `json:".tag"`
-	} `json:"visibility"`
+	} `json:"resolved_visibility"`
+	RequestedVisibilityModel struct {
+		Tag VisibilityType `json:".tag"`
+	} `json:"requested_visibility"`
 	RevokeFailureReasonModel struct {
-		Tag VisibilityType `json:".tag"`
+		Tag SharedLinkAccessFailureReason `json:".tag"`
 	} `json:"revoke_failure_reason"`
 }
 
-// TeamMemberInfo defines information about a team member.
+// Team provides information about a team.
+type Team struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// TeamMemberInfo provides information about a team member.
 type TeamMemberInfo struct {
-	Team struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"team_info"`
+	Team        *Team  `json:"team_info"`
 	DisplayName string `json:"display_name"`
 	MemberID    string `json:"member_id"`
 }
@@ -145,7 +163,7 @@ func (c *Sharing) CreateSharedLinkWithSettings(in *CreateSharedLinkWithSettingsI
 	return
 }
 
-// RevokeSharedLinkInput meep
+// RevokeSharedLinkInput request input.
 type RevokeSharedLinkInput struct {
 	URL string `json:"url"`
 }
@@ -158,4 +176,51 @@ func (c *Sharing) RevokeSharedLink(in *RevokeSharedLinkInput) error {
 	}
 	body.Close()
 	return nil
+}
+
+// ListSharedLinksInput request input.
+type ListSharedLinksInput struct {
+	Path       string `json:"path,omitempty"`
+	Cursor     string `json:"cursor,omitempty"`
+	DirectOnly bool   `json:"direct_only,omitempty"`
+}
+
+// SharedLinkMetadata provides information about a shared link.
+type SharedLinkMetadata struct {
+	Tag                  string           `json:".tag"`
+	URL                  string           `json:"url"`
+	Name                 string           `json:"name"`
+	LinkPermissions      *LinkPermissions `json:"link_permissions"`
+	PathLower            string           `json:"path_lower"`
+	ClientModified       time.Time        `json:"client_modified"`
+	ServerModified       time.Time        `json:"server_modified"`
+	Rev                  string           `json:"rev"`
+	Size                 uint64           `json:"size"`
+	ID                   string           `json:"id"`
+	TeamMemberInfo       *TeamMemberInfo  `json:"team_member_info"`
+	ContentOwnerTeamInfo *Team            `json:"content_owner_team_info"`
+}
+
+// ListSharedLinksOutput request output.
+type ListSharedLinksOutput struct {
+	Cursor  string `json:"cusror"`
+	HasMore bool   `json:"has_more"`
+	Links   []*SharedLinkMetadata
+	Header  http.Header
+}
+
+// ListSharedLinks gets the list of shared links of the user.
+func (c *Sharing) ListSharedLinks(in *ListSharedLinksInput) (*ListSharedLinksOutput, error) {
+	body, hdr, err := c.call("/sharing/list_shared_links", in)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+
+	var out *ListSharedLinksOutput
+	err = json.NewDecoder(body).Decode(&out)
+	if err == nil {
+		out.Header = hdr
+	}
+	return out, err
 }
