@@ -483,6 +483,7 @@ type GetThumbnailInput struct {
 // GetThumbnailOutput request output.
 type GetThumbnailOutput struct {
 	Body      io.ReadCloser
+	Header    http.Header
 	Length    int64
 	RequestID string
 	APIResult *Metadata
@@ -496,7 +497,7 @@ func (c *Files) GetThumbnail(in *GetThumbnailInput) (out *GetThumbnailOutput, er
 		return
 	}
 
-	out = &GetThumbnailOutput{body, l, hdr.Get("X-Dropbox-Request-Id"), unmarshalDropboxApiResult(hdr)}
+	out = &GetThumbnailOutput{body, hdr, l, hdr.Get("X-Dropbox-Request-Id"), unmarshalDropboxApiResult(hdr)}
 	return
 }
 
@@ -508,6 +509,7 @@ type GetPreviewInput struct {
 // GetPreviewOutput request output.
 type GetPreviewOutput struct {
 	Body      io.ReadCloser
+	Header    http.Header
 	Length    int64
 	RequestID string
 	APIResult *Metadata
@@ -522,7 +524,7 @@ func (c *Files) GetPreview(in *GetPreviewInput) (out *GetPreviewOutput, err erro
 		return
 	}
 
-	out = &GetPreviewOutput{body, l, hdr.Get("X-Dropbox-Request-Id"), unmarshalDropboxApiResult(hdr)}
+	out = &GetPreviewOutput{body, hdr, l, hdr.Get("X-Dropbox-Request-Id"), unmarshalDropboxApiResult(hdr)}
 	return
 }
 
